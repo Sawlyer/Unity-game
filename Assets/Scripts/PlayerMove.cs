@@ -5,8 +5,6 @@ public class PlayerMove : MonoBehaviour
 {
     public float speed = 10f;
 
-    // gravité "jeu": -9.81 * 3 = -29.43 (fort), -20 est déjà fort.
-    // Mets -12 à -18 pour commencer.
     public float gravity = -14f;
 
     public float jumpHeight = 1.5f;
