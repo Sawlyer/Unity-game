@@ -15,6 +15,7 @@ public class GameManager : MonoBehaviour
     [Header("UI")]
     public GameObject winPanel;
     public GameObject losePanel;
+    public GameObject keyIndicator;
 
     public bool hasKey { get; private set; }
     bool gameEnded;
@@ -29,6 +30,7 @@ public class GameManager : MonoBehaviour
     {
         if (winPanel) winPanel.SetActive(false);
         if (losePanel) losePanel.SetActive(false);
+        if (keyIndicator) keyIndicator.SetActive(false);
 
         SpawnKey();
     }
@@ -39,16 +41,21 @@ public class GameManager : MonoBehaviour
 
         int idx = Random.Range(0, keySpawns.Length);
         Instantiate(keyPrefab, keySpawns[idx].position, keySpawns[idx].rotation);
+
         hasKey = false;
         gameEnded = false;
         Time.timeScale = 1f;
+
+        if (keyIndicator) keyIndicator.SetActive(false);
     }
 
     public void PickKey()
     {
         if (gameEnded) return;
+
         hasKey = true;
-        // ici tu peux afficher un petit texte "Key acquired"
+
+        if (keyIndicator) keyIndicator.SetActive(true);
     }
 
     public void TryDeposit()
@@ -62,9 +69,12 @@ public class GameManager : MonoBehaviour
     public void Lose()
     {
         if (gameEnded) return;
+
         gameEnded = true;
         Time.timeScale = 0f;
+
         if (losePanel) losePanel.SetActive(true);
+
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
     }
@@ -73,7 +83,9 @@ public class GameManager : MonoBehaviour
     {
         gameEnded = true;
         Time.timeScale = 0f;
+
         if (winPanel) winPanel.SetActive(true);
+
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
     }
@@ -81,6 +93,8 @@ public class GameManager : MonoBehaviour
     public void Restart()
     {
         Time.timeScale = 1f;
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
