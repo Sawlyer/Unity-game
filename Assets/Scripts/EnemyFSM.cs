@@ -7,8 +7,8 @@ public class EnemyFSM : MonoBehaviour
     {
         Patrol,
         Investigate,
-        Chase,
-        Alarm
+        Alarm,
+        Chase
     }
 
     public State currentState;
@@ -63,12 +63,12 @@ public class EnemyFSM : MonoBehaviour
                 UpdateInvestigate();
                 break;
 
-            case State.Chase:
-                UpdateChase();
-                break;
-
             case State.Alarm:
                 UpdateAlarm();
+                break;
+
+            case State.Chase:
+                UpdateChase();
                 break;
         }
     }
@@ -91,27 +91,27 @@ public class EnemyFSM : MonoBehaviour
                 agent.SetDestination(investigateTarget);
                 break;
 
+            case State.Alarm:
+                break;
+
             case State.Chase:
                 if (player != null)
                     agent.SetDestination(player.position);
-                break;
-
-            case State.Alarm:
                 break;
         }
     }
 
     void UpdatePatrol()
     {
-        // Priorité 1 : si l'ennemi voit le joueur, il passe en chase
+        // Si l'ennemi voit le joueur, il lance une alarme
         if (vision != null && vision.canSeePlayer)
         {
             lastKnownPlayerPosition = player.position;
-            ChangeState(State.Chase);
+            ChangeState(State.Alarm);
             return;
         }
 
-        // Priorité 2 : si l'ennemi entend un bruit, il va enquêter
+        // Si l'ennemi entend un bruit, il enquête
         if (hearing != null && hearing.heardSound)
         {
             investigateTarget = hearing.lastHeardPosition;
@@ -120,7 +120,7 @@ public class EnemyFSM : MonoBehaviour
             return;
         }
 
-        // Si l'ennemi est suffisamment proche du point de patrouille
+        // Gestion de la patrouille
         if (!agent.pathPending && agent.remainingDistance <= patrolPointReachDistance)
         {
             patrolWaitTimer += Time.deltaTime;
@@ -135,15 +135,15 @@ public class EnemyFSM : MonoBehaviour
 
     void UpdateInvestigate()
     {
-        // Si l'ennemi voit le joueur pendant l'enquête, il passe en chase
+        // Si l'ennemi voit le joueur pendant l'enquête, il lance une alarme
         if (vision != null && vision.canSeePlayer)
         {
             lastKnownPlayerPosition = player.position;
-            ChangeState(State.Chase);
+            ChangeState(State.Alarm);
             return;
         }
 
-        // Si l'ennemi entend un nouveau bruit, il met à jour sa cible
+        // Si un nouveau bruit est entendu, il met à jour sa destination
         if (hearing != null && hearing.heardSound)
         {
             investigateTarget = hearing.lastHeardPosition;
@@ -151,11 +151,20 @@ public class EnemyFSM : MonoBehaviour
             agent.SetDestination(investigateTarget);
         }
 
-        // Si l'ennemi arrive suffisamment près de la zone à inspecter, il retourne en patrol
+        // Si l'ennemi arrive à la zone à inspecter, il retourne en patrouille
         if (!agent.pathPending && agent.remainingDistance <= investigateReachDistance)
         {
             ChangeState(State.Patrol);
         }
+    }
+
+    void UpdateAlarm()
+    {
+        // L'ennemi alerte les autres sur la position du joueur
+        TryAlert(lastKnownPlayerPosition);
+
+        // Puis il passe lui-même en poursuite
+        ChangeState(State.Chase);
     }
 
     void UpdateChase()
@@ -170,22 +179,13 @@ public class EnemyFSM : MonoBehaviour
         {
             lostSightTimer += Time.deltaTime;
 
-            // S'il perd le joueur suffisamment longtemps, il passe en alarm
+            // S'il perd le joueur, il va inspecter la dernière position connue
             if (lostSightTimer >= loseSightDelay)
             {
-                ChangeState(State.Alarm);
+                investigateTarget = lastKnownPlayerPosition;
+                ChangeState(State.Investigate);
             }
         }
-    }
-
-    void UpdateAlarm()
-    {
-        // L'ennemi alerte les autres sur la dernière position connue du joueur
-        TryAlert(lastKnownPlayerPosition);
-
-        // Après avoir déclenché l'alarme, il va enquêter lui-même
-        investigateTarget = lastKnownPlayerPosition;
-        ChangeState(State.Investigate);
     }
 
     void GoToNextPatrolPoint()
@@ -218,8 +218,12 @@ public class EnemyFSM : MonoBehaviour
 
     public void OnAlert(Vector3 position)
     {
-        // Si cet ennemi est déjà en chase, on ne l'interrompt pas
+        // Si cet ennemi est déjà en Chase, on ne l'interrompt pas
         if (currentState == State.Chase)
+            return;
+
+        // Si cet ennemi est déjà en Alarm, on évite de relancer la boucle
+        if (currentState == State.Alarm)
             return;
 
         investigateTarget = position;
